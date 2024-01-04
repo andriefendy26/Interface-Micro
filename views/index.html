@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Monitoring Kelembapan</title>
+</head>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+
+    socket.on("data", ({ data }) => {
+        if ('Nilai Sensor' in data) {
+            const NilaiSensor = data['Nilai Sensor'];
+            localStorage.setItem('NilaiSensor', NilaiSensor)
+            document.getElementById("Nilaisensor").textContent = NilaiSensor;
+        }
+        if ('Kelembapan' in data) {
+            const Kelembapan = data['Kelembapan'];
+            localStorage.setItem('Kelembapan', Kelembapan)
+            document.getElementById('persenKelembapan').textContent = Kelembapan + '%'
+            if (Kelembapan > 30 && Kelembapan < 39) {
+                document.getElementById('StatusTanah').textContent = "kering"
+            } else if (Kelembapan > 40 && Kelembapan < 55) {
+                document.getElementById('StatusTanah').textContent = "Lembab"
+            } else {
+                document.getElementById('StatusTanah').textContent = "Basah"
+            }
+
+        }
+
+        if ('Suhu' in data) {
+            const Suhu = data['Suhu']
+            localStorage.setItem('Suhu', Suhu)
+            document.getElementById('Suhu').textContent = Suhu + "C"
+        }
+
+        if ('Kelembapan Suhu' in data) {
+            const KelembapanSuhu = data['Kelembapan Suhu']
+            localStorage.setItem('KelembapanSuhu', KelembapanSuhu)
+            document.getElementById('KelembapanSuhu').textContent = KelembapanSuhu + '%'
+        }
+
+        if ('Pompa Air' in data) {
+            const Pompa = data['Pompa Air'];
+            if (Pompa === 0) {
+                localStorage.setItem('Pompa', 'OFF')
+                document.getElementById("Pompa-Air").textContent = "☁️"
+            } else if (Pompa === 1) {
+                localStorage.setItem('Pompa', 'ON')
+                document.getElementById("Pompa-Air").textContent = "🌧️"
+            }
+        }
+
+        if ('Durasi' in data) {
+            const Durasi = data['Durasi']
+            // const Kelembapan = localStorage.getItem('Kelembapan')
+            localStorage.setItem('Durasi', Durasi);
+            if (Durasi > 2000) {
+                document.getElementById('durasi').textContent = Durasi
+            } else {
+                document.getElementById('durasi').textContent = "mati"
+            }
+        }
+
+    });
+
+    function Arduino(data) {
+        fetch(`http://localhost:3000/arduinoApi`, {
+            method: "POST",
+            body: JSON.stringify({ data: data }),
+            headers: { "Content-Type": "application/json" },
+        });
+    }
+
+</script>
+
+<body class="container">
+    <div class="w-screen h-screen flex items-center flex-col justify-center">
+        <h1 class="font-bold text-4xl text-blue-400 mb-10">Penyiraman Otomatis</h1>
+        <div class="flex flex-col jusify-between w-[70%] h-[70%] border">
+            <main class="w-full flex justify-center  p-2 rounded-xl">
+                <div id="data-container" class="flex items-center justify-center">
+                    <div class="mr-10">
+                        <div class="flex flex-col mr-10 font-bold text-white">
+                            <button class="border p-2 rounded-lg bg-indigo-400"
+                                onclick="Arduino('1'); startUpdate(); startUpdate2()">Nyalakan</button>
+                            <button class="border p-2 rounded-lg bg-red-500"
+                                onclick="Arduino('2'); stopUpdate(); stopUpdate2()">Matikan</button>
+                        </div>
+                        <div class="flex font-bold mt-5">
+                            <p>Status / Durasi : </p>
+                            <span id="durasi"></span>
+                        </div>
+                    </div>
+                    <div class="font-bold text-2xl flex items-center justify-center flex-col p-2 ">
+                        <h1>Status Air</h1>
+                        <p id="Pompa-Air">☁️</p>
+                        <p class="text-7xl">🪴</p>
+                        <p id="StatusTanah"></p>
+                    </div>
+                </div>
+                <div class="w-[15%] text-center flex flex-col justify-center">
+                    <h1 class="font-bold text-lg">NilaiSensor</h1>
+                    <div class="w-[100%] flex justify-center items-center">
+                        <canvas id="myChart4"></canvas>
+                        <p class="absolute font-bold text-2xl text-blue-400" id="Nilaisensor">0</p>
+                    </div>
+                </div>
+
+                <div class="w-[15%] text-center flex flex-col justify-center">
+                    <h1 class="font-bold text-lg">KelembapanTanah</h1>
+                    <div class="w-[100%] flex justify-center items-center">
+                        <canvas id="myChart3"></canvas>
+                        <p class="absolute font-bold text-2xl text-blue-400" id="persenKelembapan">0</p>
+                    </div>
+                </div>
+
+                <div class="w-[15%] text-center flex flex-col justify-center">
+                    <h1 class="font-bold text-lg">Suhu</h1>
+                    <div class="w-[100%] flex justify-center items-center">
+                        <canvas id="myChart5"></canvas>
+                        <p class="absolute font-bold text-2xl text-blue-400" id="Suhu">0</p>
+                    </div>
+                </div>
+                <div class="w-[15%] text-center flex flex-col justify-center">
+                    <h1 class="font-bold text-md">Kelembapan Suhu</h1>
+                    <div class="w-[100%] flex justify-center items-center">
+                        <canvas id="myChart6"></canvas>
+                        <p class="absolute font-bold text-2xl text-blue-400" id="KelembapanSuhu">0</p>
+                    </div>
+                </div>
+            </main>
+            <div class="flex w-full">
+                <div class="w-[50%] border text-center p-2 rounded-xl">
+                    <canvas id="myChart"></canvas>
+                </div>
+                <div class="w-[50%] border text-center p-2  rounded-xl">
+                    <canvas id="myChart2"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('myChart').getContext('2d');
+        let kelembapanData = [];
+        let nilaisensorData = [];
+        let Detik1 = 0;
+        let updateInterval;
+        let updateInterval2;
+
+
+        const myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: nilaisensorData,
+                datasets: [{
+                    label: 'Kelembapan Tanah',
+                    data: kelembapanData,
+                    borderWidth: 1,
+                    borderColor: 'blue',
+                    backgroundColor: 'blue',
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom'
+                    },
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        function updateChart() {
+            const kelembapan = localStorage.getItem('Kelembapan');
+            const now = new Date();
+            const detik = Detik1++;
+
+            console.log(now.toLocaleString())
+
+            kelembapanData.push(kelembapan);
+            nilaisensorData.push(detik);
+
+            if (kelembapanData.length > 7) {
+                kelembapanData.shift();
+                nilaisensorData.shift();
+                kelembapanData.length--
+            }
+
+            myChart.update();
+        }
+
+        const ctx2 = document.getElementById('myChart2').getContext('2d');
+        let NilaiSuhu = [];
+        let NilaiDetik = [];
+        let Detik2 = 0
+        const myChart2 = new Chart(ctx2, {
+            type: 'line',
+            data: {
+                labels: NilaiDetik,
+                datasets: [{
+                    label: 'Suhu',
+                    data: NilaiSuhu,
+                    borderWidth: 1,
+                    borderColor: 'green',
+                    backgroundColor: 'green',
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom'
+                    },
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        function updateChart2() {
+            const Suhu = localStorage.getItem('Suhu');
+            const detik = Detik2++
+
+            NilaiSuhu.push(Suhu);
+            NilaiDetik.push(detik);
+
+            if (NilaiSuhu.length > 7) {
+                NilaiSuhu.shift();
+                NilaiDetik.shift();
+                NilaiSuhu.length--
+            }
+            myChart2.update();
+        }
+
+
+        const ctx3 = document.getElementById('myChart3').getContext('2d');
+        let DontKel = [];
+        let sisaKurang = [];
+        const myChart3 = new Chart(ctx3, {
+            type: 'doughnut',
+            data: {
+                labels: ['Kelembapan', ''],
+                datasets: [{
+                    label: 'Kelembapan',
+                    data: [DontKel, sisaKurang],
+                    backgroundColor: [
+                        '#00FFFF',
+                        '#B6B6B6'
+                    ],
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                }
+            }
+        });
+
+        function updateChart3() {
+            // const kelembapan = localStorage.getItem('Kelembapan');
+            const kelembapan = localStorage.getItem('Kelembapan');
+            const hasilKurang = kelembapan - 100
+
+            DontKel.push(kelembapan);
+            sisaKurang.push(hasilKurang);
+
+            setInterval(() => {
+                DontKel.shift()
+                sisaKurang.shift()
+            }, 900)
+
+            myChart3.update();
+        }
+
+        const ctx4 = document.getElementById('myChart4').getContext('2d');
+        let DontNil = [];
+        let sisaKurang2 = [];
+        const myChart4 = new Chart(ctx4, {
+            type: 'doughnut',
+            data: {
+                labels: ['NilaiSensor', ''],
+                datasets: [{
+                    label: 'Nilai Sensor',
+                    data: [DontNil, sisaKurang2],
+                    backgroundColor: [
+                        'rgb(17,0,102)',
+                        '#B6B6B6'
+                    ],
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                }
+            }
+        });
+
+        function updateChart4() {
+            // const kelembapan = localStorage.getItem('Kelembapan');
+            const NilaiSensor = localStorage.getItem('NilaiSensor');
+            const hasilKurang2 = NilaiSensor - 1023
+
+            DontNil.push(NilaiSensor);
+            sisaKurang2.push(hasilKurang2);
+
+            setInterval(() => {
+                DontNil.shift()
+                sisaKurang2.shift()
+            }, 900)
+
+            myChart4.update();
+        }
+
+        const ctx5 = document.getElementById('myChart5').getContext('2d');
+        let DontSuhu = [];
+        let sisaKurang3 = [];
+        const myChart5 = new Chart(ctx5, {
+            type: 'doughnut',
+            data: {
+                labels: ['Suhu', ''],
+                datasets: [{
+                    label: 'Suhu',
+                    data: [DontSuhu, sisaKurang3],
+                    backgroundColor: [
+                        'rgb(255,255,77)',
+                        '#B6B6B6'
+                    ],
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                }
+            }
+        });
+
+        function updateChart5() {
+            // const kelembapan = localStorage.getItem('Kelembapan');
+            const Suhu = localStorage.getItem('Suhu');
+            const hasilKurang3 = Suhu - 95
+
+            DontSuhu.push(Suhu);
+            sisaKurang3.push(hasilKurang3);
+
+            setInterval(() => {
+                DontSuhu.shift()
+                sisaKurang3.shift()
+            }, 900)
+
+            myChart5.update();
+        }
+
+        const ctx6 = document.getElementById('myChart6').getContext('2d');
+        let DontKelSuhu = [];
+        let sisaKurang4 = [];
+        const myChart6 = new Chart(ctx6, {
+            type: 'doughnut',
+            data: {
+                labels: ['Kelembapan Suhu', ''],
+                datasets: [{
+                    label: 'Kelembapan Suhu',
+                    data: [DontKelSuhu, sisaKurang4],
+                    backgroundColor: [
+                        'rgb(51,0,153)',
+                        '#B6B6B6'
+                    ],
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                }
+            }
+        });
+
+        function updateChart6() {
+            // const kelembapan = localStorage.getItem('Kelembapan');
+            const KelembapanSuhu = localStorage.getItem('KelembapanSuhu');
+            const hasilKurang4 = KelembapanSuhu - 100
+
+            DontKelSuhu.push(KelembapanSuhu);
+            sisaKurang4.push(hasilKurang4);
+
+            setInterval(() => {
+                DontKelSuhu.shift()
+                sisaKurang4.shift()
+            }, 900)
+
+            myChart6.update();
+        }
+
+
+        updateInterval = setInterval(updateChart, 1000);
+        updateInterval2 = setInterval(updateChart2, 1000);
+        setInterval(updateChart3, 1000);
+        setInterval(updateChart4, 1000);
+        setInterval(updateChart5, 1000);
+        setInterval(updateChart6, 1000);
+
+        function stopUpdate() {
+            clearInterval(updateInterval);
+        }
+
+        function stopUpdate2() {
+            clearInterval(updateInterval2);
+        }
+
+        function startUpdate() {
+            updateInterval = setInterval(updateChart, 1000);
+        }
+
+
+        function startUpdate2() {
+            updateInterval2 = setInterval(updateChart2, 1000);
+        }
+
+    </script>
+</body>
+
+</html>
